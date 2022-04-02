@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Записи группы {{group}}{% endblock title %}
+{% block content %}
+  <h1>{{group.title}}</h1>
+  <p>
+    {{group.description|linebreaksbr }}
+  </p>
+  {% for post in page_obj %}
+    <article>
+      <ul>
+        <li>
+          Автор: <a href="{% url 'posts:profile' username=post.author.username %}">{{ post.author.get_full_name }}</a>
+        </li>
+        <li>
+          Дата публикации: {{ post.pub_date|date:"d E Y" }}
+        </li>
+      </ul>
+      <p>{{ post.text|linebreaksbr }}</p>    
+    <article>
+    {% if not forloop.last %}<hr>{% endif %}
+  {% endfor %}
+
+  {% include 'posts/includes/paginator.html' %}
+  
+{%endblock content%}
