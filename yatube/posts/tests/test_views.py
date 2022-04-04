@@ -49,7 +49,7 @@ class ViewsTests(TestCase):
         )
         cls.comment = Comment.objects.create(
             post=cls.post,
-            author=cls.user,
+            author=cls.user_3,
             text='Комментарий'
         )
         cls.follow = Follow.objects.create(
@@ -94,8 +94,8 @@ class ViewsTests(TestCase):
         """Шаблон post_detail сформирован с правильным контекстом."""
         response = self.authorized_client.post(self.POST_DETAIL_URL)
         post = response.context['post']
-        self.assertEqual(response.context['comments'].count(), 1)
-        self.assertEqual(response.context['comments'][0], self.comment)
+        self.assertEqual(post.comments.all().count(), 1)
+        self.assertEqual(post.comments.all()[0], self.comment)
         self.assertEqual(post.text, self.post.text)
         self.assertEqual(post.group, self.post.group)
         self.assertEqual(post.author, self.post.author)
