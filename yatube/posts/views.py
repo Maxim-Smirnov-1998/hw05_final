@@ -1,8 +1,8 @@
-from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import render, get_object_or_404, redirect
-from django.conf import settings
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Post, Group, User
@@ -30,29 +30,27 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    if request.user.is_anonymous:
-        return render(request, 'posts/profile.html', {
-            'page_obj': get_page_obj(request, author.posts.all()),
-            'author': author
-        })
-    return render(request, 'posts/profile.html', {
+    context = {
         'page_obj': get_page_obj(request, author.posts.all()),
-        'author': author,
-        'following': Follow.objects.filter(author=author, user=request.user)
-        .exists()
-    })
+        'author': author
+    }
+    if request.user.is_authenticated:
+        context = {
+            'page_obj': get_page_obj(request, author.posts.all()),
+            'author': author,
+            'following': Follow.objects.filter(
+                author=author, user=request.user
+            )
+            .exists()
+        }
+    return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    form = CommentForm(request.POST or None)
-    context = {
-        'post': post,
-        'form': form,
-        'author': post.author,
-        'comments': post.comments.all()
-    }
-    return render(request, 'posts/post_detail.html', context)
+    return render(request, 'posts/post_detail.html', {
+        'post': get_object_or_404(Post, id=post_id),
+        'form': CommentForm(request.POST or None)
+    })
 
 
 @login_required
@@ -81,12 +79,11 @@ def post_edit(request, post_id):
     if form.is_valid():
         form.save()
         return redirect('posts:post_detail', post_id)
-    context = {
+    return render(request, 'posts/create_post.html', {
         'form': form,
         'is_edit': True,
         'post': post
-    }
-    return render(request, 'posts/create_post.html', context)
+    })
 
 
 @login_required
@@ -108,28 +105,28 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     posts = Post.objects.filter(author__following__user=request.user)
-    context = {
-        'page_obj': get_page_obj(request, posts),
-    }
-    return render(request, 'posts/follow.html', context)
+    return render(request, 'posts/follow.html', {
+        'page_obj': get_page_obj(request, posts)
+    })
 
 
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     user = request.user
+    redirect_page = redirect('posts:profile', username)
     if author == user:
-        return redirect('posts:profile', username)
+        return redirect_page
     try:
         Follow.objects.create(user=user, author=author)
     except IntegrityError:
-        return redirect('posts:profile', username)
-    return redirect('posts:profile', username)
+        return redirect_page
+    return redirect_page
 
 
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    user = request.user
-    Follow.objects.filter(user=user, author=author).delete()
+    get_object_or_404(Follow, user=request.user, author=author)
+    Follow.objects.get(user=request.user, author=author).delete()
     return redirect('posts:profile', username)

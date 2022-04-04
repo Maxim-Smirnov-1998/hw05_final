@@ -4,7 +4,7 @@ from django.urls import reverse
 from ..models import Group, Post, User
 from .consts import INDEX_URL, PROFILE_URL, GROUP_LIST_URL
 from .consts import POST_CREATE_URL, USERNAME, SLUG, POST_CREATE_REDIRECT
-from .consts import LOGIN_URL, CONST
+from .consts import LOGIN_URL, CONST, FOLLOW_URL, PROFILE_URL
 
 
 class PostURLTests(TestCase):
@@ -31,6 +31,12 @@ class PostURLTests(TestCase):
         cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.pk])
         cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.pk])
         cls.POST_EDIT_REDIRECT = CONST.format(LOGIN_URL, cls.POST_EDIT_URL)
+        cls.PROFILE_FOLLOW_URL = reverse(
+            'posts:profile_follow', args=[USERNAME]
+        )
+        cls.PROFILE_UNFOLLOW_URL = reverse(
+            'posts:profile_unfollow', args=[USERNAME]
+        )
 
     def test_urls_status_code(self):
         """Код запроса соответствупет ожидаемому."""
@@ -44,7 +50,10 @@ class PostURLTests(TestCase):
             ('/unexisting_page/', self.author, 404),
             (self.POST_EDIT_URL, self.another, 302),
             (POST_CREATE_URL, self.guest, 302),
-            (self.POST_EDIT_URL, self.guest, 302)
+            (self.POST_EDIT_URL, self.guest, 302),
+            (FOLLOW_URL, self.another, 200),
+            (self.PROFILE_FOLLOW_URL, self.another, 302),
+            (self.PROFILE_UNFOLLOW_URL, self.another, 302)
         ]
         for url, client, expected in CASES:
             with self.subTest(url=url, expected=expected):
@@ -57,7 +66,9 @@ class PostURLTests(TestCase):
         REDIRECT_TESTS = [
             (self.POST_EDIT_URL, self.POST_DETAIL_URL, self.another),
             (POST_CREATE_URL, POST_CREATE_REDIRECT, self.guest),
-            (self.POST_EDIT_URL, self.POST_EDIT_REDIRECT, self.guest)
+            (self.POST_EDIT_URL, self.POST_EDIT_REDIRECT, self.guest),
+            (self.PROFILE_FOLLOW_URL, PROFILE_URL, self.another),
+            (self.PROFILE_UNFOLLOW_URL, PROFILE_URL, self.another)
         ]
         for url, redirect, client in REDIRECT_TESTS:
             with self.subTest(url=url, redirect=redirect):
@@ -72,6 +83,7 @@ class PostURLTests(TestCase):
             (self.POST_EDIT_URL, self.author, 'posts/create_post.html'),
             (POST_CREATE_URL, self.author, 'posts/create_post.html'),
             ('/unexisting_page/', self.author, 'core/404.html'),
+            (FOLLOW_URL, self.another, 'posts/follow.html'),
         ]
         for url, client, template in TEMPLATE_TESTS:
             with self.subTest(url=url):
