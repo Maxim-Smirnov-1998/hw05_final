@@ -1,15 +1,17 @@
 import tempfile
 import shutil
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
+from django.conf import settings
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
-from django.conf import settings
 
 from ..models import Group, Post, User, Comment, Follow
 from .consts import INDEX_URL, PROFILE_URL, GROUP_LIST_URL, USERNAME
 from .consts import SLUG, GROUP_LIST_URL_2, SLUG_2, FOLLOW_URL
-from .consts import USERNAME_2, USERNAME_3, USERNAME_4
+from .consts import USERNAME_2, USERNAME_3, USERNAME_4, GIF
+from .consts import PROFILE_FOLLOW, PROFILE_UNFOLLOW
 
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -32,6 +34,11 @@ class ViewsTests(TestCase):
         cls.authorized_client.force_login(cls.user)
         cls.another_authorized.force_login(cls.user_3)
         cls.another_authorized_2.force_login(cls.user_4)
+        cls.image = SimpleUploadedFile(
+            name='small.gif',
+            content=GIF,
+            content_type='image/gif'
+        )
         cls.group = Group.objects.create(
             title='Тестовый заголовок',
             slug=SLUG,
@@ -45,7 +52,8 @@ class ViewsTests(TestCase):
         cls.post = Post.objects.create(
             text='Тестовый текст',
             group=cls.group,
-            author=cls.user
+            author=cls.user,
+            image=cls.image
         )
         cls.comment = Comment.objects.create(
             post=cls.post,
@@ -58,12 +66,6 @@ class ViewsTests(TestCase):
         )
         cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.pk])
         cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.pk])
-        cls.FROFILE_FOLLOW_1 = reverse(
-            'posts:profile_follow', args=[cls.user.username]
-        )
-        cls.FROFILE_FOLLOW_2 = reverse(
-            'posts:profile_follow', args=[cls.user_2.username]
-        )
 
     @classmethod
     def tearDownClass(cls):
@@ -89,16 +91,7 @@ class ViewsTests(TestCase):
                 self.assertEqual(post.text, self.post.text)
                 self.assertEqual(post.group, self.group)
                 self.assertEqual(post.author, self.post.author)
-
-    def test_post_detail_in_context(self):
-        """Шаблон post_detail сформирован с правильным контекстом."""
-        response = self.authorized_client.post(self.POST_DETAIL_URL)
-        post = response.context['post']
-        self.assertEqual(post.comments.all().count(), 1)
-        self.assertEqual(post.comments.all()[0], self.comment)
-        self.assertEqual(post.text, self.post.text)
-        self.assertEqual(post.group, self.post.group)
-        self.assertEqual(post.author, self.post.author)
+                self.assertEqual(post.image, self.post.image)
 
     def test_cache(self):
         """Данные в кэше хранятся до его обновления/очистки"""
@@ -108,8 +101,8 @@ class ViewsTests(TestCase):
             response.content, self.guest_client.get(INDEX_URL).content
         )
         cache.clear()
-        self.assertTrue(
-            response.content != self.guest_client.get(INDEX_URL).content
+        self.assertFalse(
+            response.content == self.guest_client.get(INDEX_URL).content
         )
 
     def test_profile_in_context(self):
@@ -129,8 +122,7 @@ class ViewsTests(TestCase):
         )
         self.assertEqual(group.pk, self.post.group.pk)
 
-    def test_group_in_context_post_detail(self):
-        """Поcт не попал в чужую групп-ленту"""
+    def test_group_not_in_context(self):
         CASES = [
             (GROUP_LIST_URL_2, self.another_authorized, 'page_obj'),
             (FOLLOW_URL, self.another_authorized, 'page_obj')
@@ -142,38 +134,30 @@ class ViewsTests(TestCase):
 
     def test_profile_follow_unfollow(self):
         """Авторизованный пользователь может подписываться на других"""
-        self.authorized_client.get(self.FROFILE_FOLLOW_1)
-        new_follow = Follow.objects.filter(user=self.user)
-        self.assertTrue(new_follow.count() == 0)
-        self.authorized_client.get(self.FROFILE_FOLLOW_2)
-        new_follow = Follow.objects.filter(user=self.user)
-        self.assertEqual(new_follow.count(), 1)
-        self.assertEqual(new_follow[0].author.username, USERNAME_2)
+        self.authorized_client.get(PROFILE_FOLLOW)
+        self.assertEqual(set(Follow.objects.filter(user=self.user)), set(1))
 
     def test_profile_follow_unfollow(self):
         """Авторизованный пользователь может удалять пользователей"""
         """из подписок."""
-        self.another_authorized.get(
-            reverse(
-                'posts:profile_unfollow',
-                kwargs={'username': self.user.username}
-            )
-        )
-        deleted_follow_count = Follow.objects.filter(user=self.user_3).count()
-        self.assertEqual(deleted_follow_count, 0)
+        self.authorized_client.get(PROFILE_UNFOLLOW)
+        self.assertEqual(set(Follow.objects.filter(user=self.user_3)), set())
+        self.assertEqual(set(Follow.objects.filter(user=self.user)), set())
 
     def test_pages_index_contains_correct_records(self):
         """На страницу выводится корректное кол-во постов"""
         NUMBER_FOR_TEST = 3
 
-        count_posts_on_page = settings.POSTS_ON_PAGE + NUMBER_FOR_TEST
+        count_posts_on_page = (settings.POSTS_ON_PAGE + NUMBER_FOR_TEST
+                               - Post.objects.count()
+                               )
         Post.objects.bulk_create(
             Post(text='Тестовый текст',
                  group=self.group,
                  author=self.user
-                 ) for i in range(count_posts_on_page - Post.objects.count())
+                 ) for i in range(count_posts_on_page)
         )
-        PAGES_TESTS = [
+        CASES = [
             (INDEX_URL, settings.POSTS_ON_PAGE, self.guest_client),
             (GROUP_LIST_URL, settings.POSTS_ON_PAGE, self.guest_client),
             (PROFILE_URL, settings.POSTS_ON_PAGE, self.authorized_client),
@@ -181,10 +165,9 @@ class ViewsTests(TestCase):
             (GROUP_LIST_URL + '?page=2', NUMBER_FOR_TEST, self.guest_client),
             (PROFILE_URL + '?page=2', NUMBER_FOR_TEST, self.authorized_client)
         ]
-        for url, count_posts, client in PAGES_TESTS:
+        for url, count_posts, client in CASES:
             with self.subTest(url=url):
-                response = client.get(url)
                 self.assertEqual(
-                    len(response.context['page_obj']),
+                    len(client.get(url).context['page_obj']),
                     count_posts
                 )

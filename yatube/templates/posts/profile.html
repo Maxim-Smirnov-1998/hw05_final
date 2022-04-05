@@ -1,44 +1,31 @@
 {% extends 'base.html' %}
-{% load thumbnail%}
 {% block title %}Профайл пользователя {{ user.get_full_name }}{% endblock title %}
 {% block content %}
-    <main>
-      <div class="container py-5">        
-        <h1>Все посты пользователя {{ author.get_full_name }}</h1>
-        <h3>
-          Всего постов: {{ author.posts.count }}</br>
-          Подписчиков: {{ author.following.count }}</br>
-          Комментариев под постами: {{ author.comments.count }}</br>
-          Блогеров, отслеживаемых автором {{ author.follower.count }}
-        </h3>  
-        {% if user.is_authenticated and user != author  %}
-          {% if following %}
-            <a class="btn btn-lg btn-light"
-               href="{% url 'posts:profile_unfollow' author.username %}"
-               role="button">Отписаться</a>
-          {% else %}
-              <a class="btn btn-lg btn-primary"
-                 href="{% url 'posts:profile_follow' author.username %}" 
-                 role="button">Подписаться</a>
-          {% endif %}
+  <main>
+    <div class="container py-5">        
+      <h1>Все посты пользователя {{ author.get_full_name }}</h1>
+      <h3>
+        Всего постов: {{ author.posts.count }}</br>
+        Подписчиков: {{ author.following.count }}</br>
+        Комментариев под постами: {{ author.comments.count }}</br>
+        Блогеров, отслеживаемых автором {{ author.follower.count }}
+      </h3>  
+      {% if user.is_authenticated and user != author  %}
+        {% if following %}
+          <a class="btn btn-lg btn-light"
+            href="{% url 'posts:profile_unfollow' author.username %}"
+            role="button">Отписаться</a>
+        {% else %}
+          <a class="btn btn-lg btn-primary"
+            href="{% url 'posts:profile_follow' author.username %}" 
+            role="button">Подписаться</a>
         {% endif %}
-        {% for post in page_obj %}
-          <article>
-            {% include 'posts/includes/author_datatime.html' with data=post %}
-            {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
-              <img class="card-img my-2" src="{{ im.url }}">
-            {% endthumbnail %}
-            <p>
-              {{ post.text|linebreaksbr }}
-            </p>
-            <a href="{% url 'posts:post_detail' post_id=post.id %}">подробная информация </a>
-          </article>   
-          {% if post.group %}    
-            <a href="{% url 'posts:group_list' slug=post.group.slug %}">#{{post.group.title}}</a>   
-          {% endif%}     
-          <hr>
-        {% endfor %}
-      </div>
-    </main>
+      {% endif %}
+      {% for post in page_obj %}
+        <article>
+          {% include 'posts/includes/author_datatime.html' with data=post view_name=True %}     
+      {% endfor %}
+    </div>
+  </main>
   {% include 'posts/includes/paginator.html' %}
 {% endblock content %}

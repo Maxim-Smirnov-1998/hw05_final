@@ -77,11 +77,17 @@ class Comment(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ('-created',)
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
 
     def __str__(self):
-        return self.text
+        errors = (
+            (f'Comment {self.text[:15]}'),
+            (f'Post {self.post[:15]}'),
+            (f'Author {self.author[:15]}')
+        )
+        return errors
 
 
 class Follow(models.Model):

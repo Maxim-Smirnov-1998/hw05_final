@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from ..models import Group, Post, User, Comment
 from .consts import PROFILE_URL, POST_CREATE_URL, USERNAME, SLUG
-from .consts import USERNAME_2
+from .consts import USERNAME_2, GIF, CONST, LOGIN_URL, POST_CREATE_URL
 
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -48,6 +48,8 @@ class FormsTests(TestCase):
         cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.id])
         cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.id])
         cls.ADD_COMMENT_URL = reverse('posts:add_comment', args=[cls.post.id])
+        cls.POST_CREATE_REDIRECT = CONST.format(LOGIN_URL, POST_CREATE_URL)
+        cls.POST_EDIT_REDIRECT = CONST.format(LOGIN_URL, cls.POST_EDIT_URL)
 
     @classmethod
     def tearDownClass(cls):
@@ -56,17 +58,9 @@ class FormsTests(TestCase):
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
-        self.gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        self.image = SimpleUploadedFile(
+        image = SimpleUploadedFile(
             name='small.gif',
-            content=self.gif,
+            content=GIF,
             content_type='image/gif'
         )
         posts = set(Post.objects.all())
@@ -74,7 +68,7 @@ class FormsTests(TestCase):
         form_data = {
             'text': 'Тестовый текст',
             'group': self.group.pk,
-            'image': self.image
+            'image': image
         }
         response = self.authorized_client.post(
             POST_CREATE_URL,
@@ -86,7 +80,7 @@ class FormsTests(TestCase):
         post = posts.pop()
         self.assertEqual(form_data['text'], post.text)
         self.assertEqual(form_data['group'], post.group.pk)
-        self.assertEqual(form_data['image'], self.image)
+        self.assertEqual(form_data['image'], image)
         self.assertEqual(post.author, self.user)
         self.assertRedirects(response, PROFILE_URL)
 
@@ -103,23 +97,15 @@ class FormsTests(TestCase):
 
     def test_edit_post(self):
         """Валидная форма редактирует запись в Post."""
-        self.gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        self.image = SimpleUploadedFile(
+        image = SimpleUploadedFile(
             name='small.gif',
-            content=self.gif,
+            content=GIF,
             content_type='image/gif'
         )
         form_data = {
             'text': 'Тестовый текст для проверки',
             'group': self.group_2.pk,
-            'image': self.image
+            'image': image
         }
         response = self.authorized_client.post(
             self.POST_EDIT_URL,
@@ -131,27 +117,28 @@ class FormsTests(TestCase):
         self.assertEqual(form_data['text'], post.text)
         self.assertEqual(form_data['group'], post.group.pk)
         self.assertEqual(post.author, self.post.author)
-        self.assertEqual(form_data['image'], self.image)
+        self.assertEqual(form_data['image'], image)
 
     def test_comment_add(self):
         """Авторизованный пользователь создает комментарий"""
-        count_comments = Comment.objects.all().count()
         form_data = {
-            'post': self.post.pk,
-            'author': self.post.author,
+            'post': self.post,
+            'author': self.user_2,
             'text': 'Новый комментарий'
         }
-        self.authorized_client.post(
+        response = self.another_authorized.post(
             self.ADD_COMMENT_URL,
             data=form_data,
             follow=True
         )
-        self.assertEqual(count_comments + 1, Comment.objects.all().count())
+        self.assertEqual(
+            form_data['text'],
+            response.context['post'].comments.all()[0].text
+        )
 
-    def test_posting_anonymously(self):
-        """Попытки анонима создать пост/комментарий."""
+    def test_create_comment_anonymously(self):
+        """Попытки анонима создать комментарий."""
         count_comments = set(Comment.objects.all())
-        posts = set(Post.objects.all())
         form_data = {
             'comment': 'Новый комментарий'
         }
@@ -161,34 +148,40 @@ class FormsTests(TestCase):
             follow=True
         )
         self.assertEqual(count_comments, set(Comment.objects.all()))
+
+    def test_create_post_anonymously(self):
+        """Попытки анонима создать пост."""
+        posts = set(Post.objects.all())
         form_data = {
             'text': 'Новый тестовый текст',
             'group': self.group.pk,
         }
-        self.guest_client.post(
+        response = self.guest_client.post(
             POST_CREATE_URL,
             data=form_data,
             follow=True
         )
         self.assertEqual(posts, set(Post.objects.all()))
+        self.assertRedirects(response, self.POST_CREATE_REDIRECT)
 
     def test_posting_anonymously(self):
         """Попытки анонима/не-автора отредактировать пост."""
+        CASES = [
+            (self.guest_client, self.POST_EDIT_REDIRECT),
+            (self.another_authorized, self.POST_DETAIL_URL)
+        ]
         form_data = {
             'text': 'Новый тестовый текст',
             'group': self.group_2
         }
-        self.guest_client.post(
-            self.POST_EDIT_URL,
-            data=form_data,
-            follow=True
-        )
-        self.assertNotEqual(form_data['text'], self.post.text)
-        self.assertNotEqual(form_data['group'], self.post.group)
-        self.another_authorized.post(
-            self.POST_EDIT_URL,
-            data=form_data,
-            follow=True
-        )
-        self.assertNotEqual(form_data['text'], self.post.text)
-        self.assertNotEqual(form_data['group'], self.post.group)
+        for client, redirect in CASES:
+            with self.subTest(client=client):
+                response = client.post(
+                    self.POST_EDIT_URL,
+                    data=form_data,
+                    follow=True
+                )
+                self.assertRedirects(response, redirect)
+                self.assertNotIn('text', response.context)
+                self.assertNotIn('group', response.context)
+                self.assertNotEqual(response.context['user'], self.post.author)

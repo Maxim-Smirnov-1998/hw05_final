@@ -35,14 +35,8 @@ def profile(request, username):
         'author': author
     }
     if request.user.is_authenticated:
-        context = {
-            'page_obj': get_page_obj(request, author.posts.all()),
-            'author': author,
-            'following': Follow.objects.filter(
-                author=author, user=request.user
-            )
-            .exists()
-        }
+        following = Follow.objects.filter(author=author, user=request.user)
+        context['following'] = following
     return render(request, 'posts/profile.html', context)
 
 
@@ -104,9 +98,11 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    posts = Post.objects.filter(author__following__user=request.user)
     return render(request, 'posts/follow.html', {
-        'page_obj': get_page_obj(request, posts)
+        'page_obj': get_page_obj(
+            request,
+            Post.objects.filter(author__following__user=request.user)
+        )
     })
 
 
@@ -126,7 +122,7 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    get_object_or_404(Follow, user=request.user, author=author)
-    Follow.objects.get(user=request.user, author=author).delete()
+    get_object_or_404(Follow, user=request.user,
+                      author=User.objects.get(username=username)
+                      ).delete()
     return redirect('posts:profile', username)

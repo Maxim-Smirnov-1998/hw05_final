@@ -37,6 +37,12 @@ class PostURLTests(TestCase):
         cls.PROFILE_UNFOLLOW_URL = reverse(
             'posts:profile_unfollow', args=[USERNAME]
         )
+        cls.UNFOLLOW_REDIRECT = CONST.format(LOGIN_URL,
+                                             cls.PROFILE_UNFOLLOW_URL
+                                             )
+        cls.FOLLOW_REDIRECT = CONST.format(LOGIN_URL,
+                                           cls.PROFILE_FOLLOW_URL
+                                           )
 
     def test_urls_status_code(self):
         """Код запроса соответствупет ожидаемому."""
@@ -53,7 +59,10 @@ class PostURLTests(TestCase):
             (self.POST_EDIT_URL, self.guest, 302),
             (FOLLOW_URL, self.another, 200),
             (self.PROFILE_FOLLOW_URL, self.another, 302),
-            (self.PROFILE_UNFOLLOW_URL, self.another, 302)
+            (self.PROFILE_UNFOLLOW_URL, self.another, 302),
+            (FOLLOW_URL, self.guest, 302),
+            (self.PROFILE_FOLLOW_URL, self.guest, 302),
+            (self.PROFILE_UNFOLLOW_URL, self.guest, 302)
         ]
         for url, client, expected in CASES:
             with self.subTest(url=url, expected=expected):
@@ -68,7 +77,9 @@ class PostURLTests(TestCase):
             (POST_CREATE_URL, POST_CREATE_REDIRECT, self.guest),
             (self.POST_EDIT_URL, self.POST_EDIT_REDIRECT, self.guest),
             (self.PROFILE_FOLLOW_URL, PROFILE_URL, self.another),
-            (self.PROFILE_UNFOLLOW_URL, PROFILE_URL, self.another)
+            (self.PROFILE_UNFOLLOW_URL, PROFILE_URL, self.another),
+            (self.PROFILE_FOLLOW_URL, self.FOLLOW_REDIRECT, self.guest),
+            (self.PROFILE_UNFOLLOW_URL, self.UNFOLLOW_REDIRECT, self.guest)
         ]
         for url, redirect, client in REDIRECT_TESTS:
             with self.subTest(url=url, redirect=redirect):
