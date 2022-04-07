@@ -12,9 +12,7 @@
   <img class="card-img my-2" src="{{ im.url }}">
 {% endthumbnail %}
 <p >{{ post.text|linebreaksbr }}</p>    
-{% if post.group %}
-  {% if group_title is None %}
-    <a href="{% url 'posts:group_list' post.group.slug %}"> # {{post.group.title}}</a></br>
-  {% endif %}
+{% if post.group and not hide_groups %}
+  <a href="{% url 'posts:group_list' post.group.slug %}"> #{{post.group.title}}</a></br>
 {% endif %}
 <a href="{% url 'posts:post_detail' post.id %}"> Подробная информация о посте </a></br>

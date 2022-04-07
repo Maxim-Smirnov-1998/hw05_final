@@ -1,7 +1,8 @@
 from django.test import TestCase
 
 from ..models import Group, Post, User
-from .consts import USERNAME
+
+USERNAME = 'TestUser'
 
 
 class PostModelTest(TestCase):

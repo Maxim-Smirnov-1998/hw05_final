@@ -1,12 +1,24 @@
+import django.contrib
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from ..models import Group, Post, User
-from .consts import INDEX_URL, PROFILE_URL_2, GROUP_LIST_URL
-from .consts import POST_CREATE_URL, USERNAME_2, SLUG, POST_CREATE_REDIRECT
-from .consts import LOGIN_URL, NEXT, FOLLOW_URL, PROFILE_FOLLOW
-from .consts import TEMPLATE_ERROR_404, PROFILE_UNFOLLOW
-from .consts import FOLLOW_REDIRECT, UNFOLLOW_REDIRECT
+
+USERNAME_2 = 'TestUser_2'
+SLUG = 'test-slug'
+NEXT = '{}?next={}'
+
+LOGIN_URL = reverse('users:login')
+INDEX_URL = reverse('posts:index')
+PROFILE_URL = reverse('posts:profile', args=[USERNAME_2])
+POST_CREATE_URL = reverse('posts:post_create')
+FOLLOW_URL = reverse('posts:follow_index')
+GROUP_LIST_URL = reverse('posts:group_list', args=[SLUG])
+PROFILE_FOLLOW = reverse('posts:profile_follow', args=[USERNAME_2])
+PROFILE_UNFOLLOW = reverse('posts:profile_unfollow', args=[USERNAME_2])
+POST_CREATE_REDIRECT = NEXT.format(LOGIN_URL, POST_CREATE_URL)
+UNFOLLOW_REDIRECT = NEXT.format(LOGIN_URL, PROFILE_UNFOLLOW)
+FOLLOW_REDIRECT = NEXT.format(LOGIN_URL, PROFILE_FOLLOW)
 
 
 class PostURLTests(TestCase):
@@ -39,7 +51,7 @@ class PostURLTests(TestCase):
         CASES = [
             (INDEX_URL, self.guest, 200),
             (GROUP_LIST_URL, self.author, 200),
-            (PROFILE_URL_2, self.author, 200),
+            (PROFILE_URL, self.author, 200),
             (self.POST_DETAIL_URL, self.author, 200),
             (self.POST_EDIT_URL, self.author, 200),
             (POST_CREATE_URL, self.author, 200),
@@ -54,11 +66,10 @@ class PostURLTests(TestCase):
             (PROFILE_FOLLOW, self.guest, 302),
             (PROFILE_UNFOLLOW, self.guest, 302),
             (PROFILE_FOLLOW, self.author, 302),
-            (PROFILE_UNFOLLOW, self.author, 302),
-            (FOLLOW_URL, self.author, 200)
+            (PROFILE_UNFOLLOW, self.author, 404)
         ]
         for url, client, expected in CASES:
-            with self.subTest(url=url, expected=expected, client=client):
+            with self.subTest(django.contrib.auth.get_user(client).username):
                 self.assertEqual(
                     client.get(url).status_code,
                     expected
@@ -69,26 +80,25 @@ class PostURLTests(TestCase):
             (self.POST_EDIT_URL, self.POST_DETAIL_URL, self.another),
             (POST_CREATE_URL, POST_CREATE_REDIRECT, self.guest),
             (self.POST_EDIT_URL, self.POST_EDIT_REDIRECT, self.guest),
-            (PROFILE_FOLLOW, PROFILE_URL_2, self.another),
-            (PROFILE_UNFOLLOW, PROFILE_URL_2, self.another),
+            (PROFILE_FOLLOW, PROFILE_URL, self.another),
+            (PROFILE_UNFOLLOW, PROFILE_URL, self.another),
             (PROFILE_FOLLOW, FOLLOW_REDIRECT, self.guest),
             (PROFILE_UNFOLLOW, UNFOLLOW_REDIRECT, self.guest),
-            (PROFILE_FOLLOW, PROFILE_URL_2, self.author),
-            (PROFILE_UNFOLLOW, PROFILE_URL_2, self.author)
+            (PROFILE_FOLLOW, PROFILE_URL, self.author)
         ]
         for url, redirect, client in REDIRECT_TESTS:
-            with self.subTest(url=url, redirect=redirect):
+            with self.subTest(django.contrib.auth.get_user(client).username):
                 self.assertRedirects(client.get(url), redirect)
 
     def test_urls_templates(self):
         TEMPLATE_TESTS = [
             (INDEX_URL, self.guest, 'posts/index.html'),
             (GROUP_LIST_URL, self.author, 'posts/group_list.html'),
-            (PROFILE_URL_2, self.author, 'posts/profile.html'),
+            (PROFILE_URL, self.author, 'posts/profile.html'),
             (self.POST_DETAIL_URL, self.author, 'posts/post_detail.html'),
             (self.POST_EDIT_URL, self.author, 'posts/create_post.html'),
             (POST_CREATE_URL, self.author, 'posts/create_post.html'),
-            ('/unexisting_page/', self.author, TEMPLATE_ERROR_404),
+            ('/unexisting_page/', self.author, 'core/404.html'),
             (FOLLOW_URL, self.another, 'posts/follow.html'),
         ]
         for url, client, template in TEMPLATE_TESTS:

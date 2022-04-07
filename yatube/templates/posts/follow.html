@@ -6,7 +6,8 @@
   {% cache 0 index_page with page_obj %}
     {% include 'posts/includes/switcher.html' with follow=True %}
     {% for post in page_obj %}
-      {% include 'posts/includes/posts_cycle.html' %}
+      {% include 'posts/includes/posts.html' %}
+      {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
   {% endcache %} 
   {% include 'posts/includes/paginator.html' %}

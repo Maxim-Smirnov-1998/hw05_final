@@ -8,13 +8,33 @@ from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 
 from ..models import Group, Post, User, Comment, Follow
-from .consts import INDEX_URL, PROFILE_URL, GROUP_LIST_URL, USERNAME
-from .consts import SLUG, GROUP_LIST_URL_2, SLUG_2, FOLLOW_URL
-from .consts import USERNAME_2, USERNAME_3, USERNAME_4, GIF
-from .consts import PROFILE_FOLLOW, PROFILE_UNFOLLOW
 
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+
+USERNAME = 'TestUser'
+USERNAME_2 = 'TestUser_2'
+USERNAME_3 = 'TestUser_3'
+USERNAME_4 = 'TestUser_4'
+SLUG = 'test-slug'
+SLUG_2 = 'test_slug_2'
+
+INDEX_URL = reverse('posts:index')
+PROFILE_URL = reverse('posts:profile', args=[USERNAME])
+GROUP_LIST_URL = reverse('posts:group_list', args=[SLUG])
+GROUP_LIST_URL_2 = reverse('posts:group_list', args=[SLUG_2])
+FOLLOW_URL = reverse('posts:follow_index')
+PROFILE_FOLLOW = reverse('posts:profile_follow', args=[USERNAME_2])
+PROFILE_UNFOLLOW = reverse('posts:profile_unfollow', args=[USERNAME_2])
+
+GIF = (
+    b'\x47\x49\x46\x38\x39\x61\x02\x00'
+    b'\x01\x00\x80\x00\x00\x00\x00\x00'
+    b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+    b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+    b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+    b'\x0A\x00\x3B'
+)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
