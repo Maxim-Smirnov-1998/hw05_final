@@ -82,12 +82,12 @@ class Comment(models.Model):
         verbose_name_plural = 'Комментарии'
 
     def __str__(self):
-        errors = (
-            (f'Comment {self.text[:15]}'),
-            (f'Post {self.post[:15]}'),
-            (f'Author {self.author[:15]}')
+        message = (
+            f'Comment {self.text[:15]}'
+            f'Post {self.post}'
+            f'Author {self.author}'
         )
-        return errors
+        return message
 
 
 class Follow(models.Model):

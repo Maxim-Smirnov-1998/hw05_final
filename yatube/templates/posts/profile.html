@@ -23,7 +23,7 @@
       {% endif %}
       {% for post in page_obj %}
         <article>
-          {% include 'posts/includes/author_datatime.html' with data=post view_name=True %}     
+          {% include 'posts/includes/posts_cycle.html' %}     
       {% endfor %}
     </div>
   </main>

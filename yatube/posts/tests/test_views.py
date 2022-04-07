@@ -101,14 +101,14 @@ class ViewsTests(TestCase):
             response.content, self.guest_client.get(INDEX_URL).content
         )
         cache.clear()
-        self.assertFalse(
-            response.content == self.guest_client.get(INDEX_URL).content
+        self.assertNotEqual(
+            response.content, self.guest_client.get(INDEX_URL).content
         )
 
     def test_profile_in_context(self):
         """Шаблон profile сформирован с правильным контекстом."""
         response = self.authorized_client.get(PROFILE_URL)
-        self.assertEqual(response.context['user'], self.post.author)
+        self.assertEqual(response.context['author'], self.post.author)
 
     def test_group_in_context_group_list(self):
         """Шаблон group_list сформирован с правильным контекстом."""
@@ -122,7 +122,7 @@ class ViewsTests(TestCase):
         )
         self.assertEqual(group.pk, self.post.group.pk)
 
-    def test_group_not_in_context(self):
+    def test_post_not_in_context(self):
         CASES = [
             (GROUP_LIST_URL_2, self.another_authorized, 'page_obj'),
             (FOLLOW_URL, self.another_authorized, 'page_obj')
@@ -132,30 +132,32 @@ class ViewsTests(TestCase):
                 page = client.get(url).context[context]
                 self.assertNotIn(self.post, page)
 
-    def test_profile_follow_unfollow(self):
+    def test_profile_follow_follow(self):
         """Авторизованный пользователь может подписываться на других"""
         self.authorized_client.get(PROFILE_FOLLOW)
-        self.assertEqual(set(Follow.objects.filter(user=self.user)), set(1))
+        self.assertTrue(Follow.objects.filter(
+            author__username=USERNAME_2, user=self.user
+        ).exists())
 
     def test_profile_follow_unfollow(self):
         """Авторизованный пользователь может удалять пользователей"""
         """из подписок."""
         self.authorized_client.get(PROFILE_UNFOLLOW)
-        self.assertEqual(set(Follow.objects.filter(user=self.user_3)), set())
-        self.assertEqual(set(Follow.objects.filter(user=self.user)), set())
+        self.assertFalse(Follow.objects.filter(
+            author__username=USERNAME_2, user=self.user
+        ).exists())
 
     def test_pages_index_contains_correct_records(self):
         """На страницу выводится корректное кол-во постов"""
+        Post.objects.all().delete()
         NUMBER_FOR_TEST = 3
 
-        count_posts_on_page = (settings.POSTS_ON_PAGE + NUMBER_FOR_TEST
-                               - Post.objects.count()
-                               )
+        count_posts = settings.POSTS_ON_PAGE + NUMBER_FOR_TEST
         Post.objects.bulk_create(
             Post(text='Тестовый текст',
                  group=self.group,
                  author=self.user
-                 ) for i in range(count_posts_on_page)
+                 ) for i in range(count_posts)
         )
         CASES = [
             (INDEX_URL, settings.POSTS_ON_PAGE, self.guest_client),
@@ -167,6 +169,7 @@ class ViewsTests(TestCase):
         ]
         for url, count_posts, client in CASES:
             with self.subTest(url=url):
+                print(len(client.get(url).context['page_obj']))
                 self.assertEqual(
                     len(client.get(url).context['page_obj']),
                     count_posts

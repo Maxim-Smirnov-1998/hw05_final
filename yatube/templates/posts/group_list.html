@@ -6,7 +6,8 @@
     {{group.description|linebreaksbr }}
   </p>
   {% for post in page_obj %}
-      {% include 'posts/includes/author_datatime.html' with data=post name=group_list %}
+      {% include 'posts/includes/posts_cycle.html' with group_title=True %}
+      {% if not forloop.last %}<hr>{% endif %}
   {% endfor %}
   {% include 'posts/includes/paginator.html' %}
 {%endblock content%}

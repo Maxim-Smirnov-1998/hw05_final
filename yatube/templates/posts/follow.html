@@ -6,7 +6,7 @@
   {% cache 0 index_page with page_obj %}
     {% include 'posts/includes/switcher.html' with follow=True %}
     {% for post in page_obj %}
-      {% include 'posts/includes/author_datatime.html' with data=post name=group_list view_name=True%}
+      {% include 'posts/includes/posts_cycle.html' %}
     {% endfor %}
   {% endcache %} 
   {% include 'posts/includes/paginator.html' %}
