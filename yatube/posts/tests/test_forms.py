@@ -7,7 +7,7 @@ from django.conf import settings
 from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from ..models import Group, Post, User, Comment
+from ..models import Group, Post, User, Comment, IMAGE_UPLOAD_PATH
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -95,7 +95,7 @@ class FormsTests(TestCase):
         post = posts.pop()
         self.assertEqual(form_data['text'], post.text)
         self.assertEqual(form_data['group'], post.group.pk)
-        self.assertEqual(f'posts/{image}', post.image)
+        self.assertEqual(f'{IMAGE_UPLOAD_PATH}{image}', post.image)
         self.assertEqual(post.author, self.user)
         self.assertRedirects(response, PROFILE_URL)
 
@@ -132,24 +132,24 @@ class FormsTests(TestCase):
         self.assertEqual(form_data['text'], post.text)
         self.assertEqual(form_data['group'], post.group.pk)
         self.assertEqual(post.author, self.post.author)
-        self.assertEqual(f'posts/{image.name}', post.image.name)
+        self.assertEqual(f'{IMAGE_UPLOAD_PATH}{image.name}', post.image.name)
 
     def test_comment_add(self):
         """Авторизованный пользователь создает комментарий"""
+        comments = set(Comment.objects.all())
         form_data = {
             'text': 'Новый комментарий'
         }
-        response = self.another_authorized.post(
+        self.another_authorized.post(
             self.ADD_COMMENT_URL,
             data=form_data,
             follow=True
         )
-        post = response.context['post']
-        self.assertEqual(post, self.post)
-        self.assertEqual(post.comments.count(), 1)
-        comment = post.comments.all()[0]
-        self.assertEqual(form_data['text'], comment.text)
-        self.assertEqual(response.context['post'], self.post)
+        comments = set(Comment.objects.all()) - comments
+        self.assertEqual(len(comments), 1)
+        comment = comments.pop()
+        self.assertEqual(comment.text, form_data['text'])
+        self.assertEqual(comment.post, self.post)
         self.assertEqual(comment.author, self.user_2)
 
     def test_create_comment_anonymously(self):
@@ -204,7 +204,7 @@ class FormsTests(TestCase):
                     follow=True
                 )
                 self.assertEqual(Post.objects.count(), 1)
-                post = Post.objects.all()[0]
+                post = Post.objects.get(pk=self.post.pk)
                 self.assertRedirects(response, redirect)
                 self.assertEqual(post.text, self.post.text)
                 self.assertEqual(post.group, self.post.group)

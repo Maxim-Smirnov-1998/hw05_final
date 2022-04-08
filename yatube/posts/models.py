@@ -3,6 +3,7 @@ from django.db import models
 
 
 User = get_user_model()
+IMAGE_UPLOAD_PATH = 'posts/'
 
 
 class Group(models.Model):
@@ -44,7 +45,7 @@ class Post(models.Model):
     )
     image = models.ImageField(
         'Картинка',
-        upload_to='posts/',
+        upload_to=IMAGE_UPLOAD_PATH,
         blank=True
     )
 
@@ -84,7 +85,7 @@ class Comment(models.Model):
     def __str__(self):
         return (f'Comment {self.text[:15]}'
                 f'Post {self.post}'
-                f'Author {self.author.user}')
+                f'Author {self.author.username}')
 
 
 class Follow(models.Model):

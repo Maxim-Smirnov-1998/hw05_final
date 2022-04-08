@@ -1,4 +1,4 @@
-import django.contrib
+import django.contrib.auth
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -69,7 +69,9 @@ class PostURLTests(TestCase):
             (PROFILE_UNFOLLOW, self.author, 404)
         ]
         for url, client, expected in CASES:
-            with self.subTest(django.contrib.auth.get_user(client).username):
+            with self.subTest(django.contrib.auth.get_user(client).username,
+                              url=url, expected=expected
+                              ):
                 self.assertEqual(
                     client.get(url).status_code,
                     expected
@@ -87,7 +89,9 @@ class PostURLTests(TestCase):
             (PROFILE_FOLLOW, PROFILE_URL, self.author)
         ]
         for url, redirect, client in REDIRECT_TESTS:
-            with self.subTest(django.contrib.auth.get_user(client).username):
+            with self.subTest(django.contrib.auth.get_user(client).username,
+                              url=url, redirect=redirect
+                              ):
                 self.assertRedirects(client.get(url), redirect)
 
     def test_urls_templates(self):

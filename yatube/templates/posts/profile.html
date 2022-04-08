@@ -23,7 +23,7 @@
       {% endif %}
       {% for post in page_obj %}
         <article>
-          {% include 'posts/includes/posts.html' %}
+          {% include 'posts/includes/marking_post.html' %}
         </article>
         {% if not forloop.last %}<hr>{% endif %}   
       {% endfor %}
